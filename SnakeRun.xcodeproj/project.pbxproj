@@ -294,6 +294,7 @@
 				EE84D4711C39B3C60093F5F4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

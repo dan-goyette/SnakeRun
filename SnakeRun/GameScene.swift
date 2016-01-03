@@ -9,14 +9,60 @@
 import SpriteKit
 
 class GameScene: SKScene {
+    
+    var leftTurnButton: SKShapeNode!
+    var rightTurnButton: SKShapeNode!
+    var snakeHead: SKSpriteNode!
+    var radialVelocity: Double!
+    
+    var debugLabel: SKLabelNode!
+    var currentTurnButton = TurnDirection.None
+    
+    var maxTurnMagnitude: Double! = 2.0;
+    var turnIncremement: Double! = 0.01
+    
+    
     override func didMoveToView(view: SKView) {
-        /* Setup your scene here */
-        let myLabel = SKLabelNode(fontNamed:"Chalkduster")
-        myLabel.text = "Hello, World!"
-        myLabel.fontSize = 45
-        myLabel.position = CGPoint(x:CGRectGetMidX(self.frame), y:CGRectGetMidY(self.frame))
+         
+        let screenSize: CGRect = UIScreen.mainScreen().bounds
         
-        self.addChild(myLabel)
+        /* Setup your scene here */
+        self.leftTurnButton = SKShapeNode(circleOfRadius: 30)
+        self.leftTurnButton.fillColor = UIColor.redColor()
+        self.leftTurnButton.position = CGPointMake(-1 * screenSize.width/2 + 50, -1 * screenSize.height/2 + 100)
+        self.leftTurnButton.zPosition = 2
+        self.addChild(self.leftTurnButton)
+       
+        self.rightTurnButton = SKShapeNode(circleOfRadius: 30)
+        self.rightTurnButton.fillColor = UIColor.redColor()
+        self.rightTurnButton.position = CGPointMake( screenSize.width/2 - 50, -1 * screenSize.height/2 + 100)
+        self.rightTurnButton.zPosition = 2
+        self.addChild(self.rightTurnButton)
+    
+        
+        self.snakeHead = SKSpriteNode(color: UIColor.blackColor(), size: CGSizeMake(15,15))
+        self.snakeHead.position = CGPointMake(0,0)
+        self.addChild(snakeHead)
+        
+        let snakeNose = SKSpriteNode(color: UIColor.blackColor(), size: CGSizeMake(2,5))
+        snakeNose.position = CGPointMake(-1,6)
+        snakeNose.anchorPoint = CGPointMake(0,0)
+        self.snakeHead.addChild(snakeNose)
+        
+        
+        self.debugLabel = SKLabelNode()
+        self.debugLabel.horizontalAlignmentMode = .Left
+        self.debugLabel.position = CGPointMake(-1 * screenSize.width/2, screenSize.height/2 - 25)
+        self.debugLabel.fontSize = 12
+        self.debugLabel.fontColor = UIColor.blackColor()
+        self.addChild(self.debugLabel)
+        
+        self.radialVelocity = 0
+    }
+    
+    func setDebugMessage(message: String) {
+        self.debugLabel.text = message
+
     }
     
     override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
@@ -25,21 +71,45 @@ class GameScene: SKScene {
         for touch in touches {
             let location = touch.locationInNode(self)
             
-            let sprite = SKSpriteNode(imageNamed:"Spaceship")
-            
-            sprite.xScale = 0.5
-            sprite.yScale = 0.5
-            sprite.position = location
-            
-            let action = SKAction.rotateByAngle(CGFloat(M_PI), duration:1)
-            
-            sprite.runAction(SKAction.repeatActionForever(action))
-            
-            self.addChild(sprite)
+            if (self.currentTurnButton == TurnDirection.None) {
+                if (self.leftTurnButton.containsPoint(location)) {
+                    self.currentTurnButton = TurnDirection.Left
+                } else if (self.rightTurnButton.containsPoint(location)) {
+                    self.currentTurnButton = TurnDirection.Right
+                }
+            }
         }
+    }
+    
+    override func touchesEnded(touches: Set<UITouch>, withEvent event: UIEvent?) {
+        
     }
    
     override func update(currentTime: CFTimeInterval) {
         /* Called before each frame is rendered */
+        
+        
+        if (self.currentTurnButton == TurnDirection.Left) {
+            if (abs( self.radialVelocity) < maxTurnMagnitude) {
+                self.radialVelocity = self.radialVelocity - self.turnIncremement
+            }
+        } else if (self.currentTurnButton == TurnDirection.Right) {
+            if (abs( self.radialVelocity) < maxTurnMagnitude) {
+                self.radialVelocity = self.radialVelocity + self.turnIncremement
+            }
+        } else {
+            if (self.radialVelocity < 0) {
+                self.radialVelocity = self.radialVelocity + self.turnIncremement
+            } else if (self.radialVelocity > 0) {
+                self.radialVelocity = self.radialVelocity - self.turnIncremement
+            }
+        }
+    }
+    
+    
+    enum TurnDirection {
+        case None
+        case Left
+        case Right
     }
 }
