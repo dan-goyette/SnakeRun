@@ -29,8 +29,8 @@ class GameScene: SKScene {
     var currentTurnButton = TurnDirection.None
     
     var maxTurnMagnitude: Double! = 2.0;
-    var turnIncremement: Double! = 0.15
-    var unturnIncremement: Double! = 0.30
+    var turnIncremement: Double! = 0.1
+    var unturnIncremement: Double! = 0.2
     
     
     override func didMoveToView(view: SKView) {
@@ -52,7 +52,7 @@ class GameScene: SKScene {
     
         
         self.snakeHead = SKSpriteNode(color: UIColor.blackColor(), size: CGSizeMake(15,15))
-        self.snakeHead.position = CGPointMake(0,0)
+        self.snakeHead.position = CGPointMake(0, -1 * screenSize.height/4)
         self.addChild(snakeHead)
         
         let snakeNose = SKSpriteNode(color: UIColor.blackColor(), size: CGSizeMake(2,5))
@@ -72,7 +72,8 @@ class GameScene: SKScene {
         
         
         self.objectWrap = SKShapeNode(rectOfSize: CGSizeMake(screenSize.width,  screenSize.height))
-        //self.objectWrap.strokeColor = UIColor.clearColor()
+        self.objectWrap.strokeColor = UIColor.clearColor()
+        self.objectWrap.position = CGPointMake(0, -1 * screenSize.height/4)
         self.addChild(objectWrap)
         
         
@@ -130,10 +131,10 @@ class GameScene: SKScene {
         
 
     }
-   
+    
+    
     override func update(currentTime: CFTimeInterval) {
         /* Called before each frame is rendered */
-        
         
         if (self.currentTurnButton == TurnDirection.Left) {
             if (abs( self.radialVelocity) < maxTurnMagnitude) {
@@ -155,7 +156,7 @@ class GameScene: SKScene {
             }
         }
         
-        let forwardVelocity = maxTurnMagnitude - self.radialVelocity + 0.5
+        let forwardVelocity = maxTurnMagnitude - self.radialVelocity + 1.5
         
         self.directionInRadians = self.directionInRadians + (((M_PI / 180) * (self.radialVelocity / 2)) * M_PI)
 
@@ -163,22 +164,13 @@ class GameScene: SKScene {
         
         // This is faking the rotation by using rotation based on radial velocity, so the snake's head
         // snaps back to 0 when he's not rotating.
-       // self.snakeHead.zRotation = CGFloat(-1 * self.radialVelocity  * 0.1)
-        
+        self.snakeHead.zRotation = CGFloat(-1 * self.radialVelocity  * 0.1)
         
         for debris in self.objectWrap.children {
-            
-        
             let newXComponent = sin(self.directionInRadians)
             let newYComponent = cos( self.directionInRadians)
             
-            
             debris.position = CGPointMake(debris.position.x - CGFloat(newXComponent * forwardVelocity), debris.position.y - CGFloat(newYComponent * forwardVelocity))
-        
-        //debris.position = CGPointMake(debris.position.x , debris.position.y - 0.3)
-        
-
-        
 //        debugPrint("x: " + String(newXComponent) + "; y: " + String(newYComponent))
         }
             
