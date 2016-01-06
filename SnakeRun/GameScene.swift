@@ -18,8 +18,11 @@ class GameScene: SKScene {
     var objectWrap: SKShapeNode!
     var debris1: SKSpriteNode!
     var debris2: SKSpriteNode!
-
     
+    var debrisSprites = [SKSpriteNode]()
+
+    var snakeBodyPartSprites = [SKSpriteNode]()
+    var snakeBodyPartPositionDeltas = [[SnakePartHistory]]()
     
     
     var radialVelocity: Double!
@@ -80,15 +83,19 @@ class GameScene: SKScene {
         self.debris1 = SKSpriteNode(color: UIColor.greenColor(), size: CGSizeMake(15,15))
         self.debris1.position = CGPointMake(100, 100)
         self.objectWrap.addChild(debris1)
+        self.debrisSprites.append(self.debris1)
 
         self.debris2 = SKSpriteNode(color: UIColor.purpleColor(), size: CGSizeMake(15,15))
         self.debris2.position = CGPointMake(-200, 125)
         self.objectWrap.addChild(debris2)
-
+        self.debrisSprites.append(self.debris2)
         
         
         self.radialVelocity = 0
         self.directionInRadians = 0
+        
+        self.snakeBodyPartPositionDeltas.append([SnakePartHistory]())
+        
     }
     
     func setDebugMessage(message: String) {
@@ -100,8 +107,23 @@ class GameScene: SKScene {
         setDebugMessage("Turn Direction: " + String(self.currentTurnButton) + "; Speed: " + String(self.radialVelocity) + "; Rotation: " + String(self.directionInRadians / M_PI))
     }
     
+    func addSnakeBodyPart() {
+        
+        let snakeBodyPart = SKSpriteNode(color: UIColor.blackColor(), size: CGSizeMake(15,15))
+        snakeBodyPart.position = CGPointMake(0, -15)
+        self.snakeBodyPartSprites.append(snakeBodyPart)
+        self.objectWrap.addChild(snakeBodyPart)
+        
+        self.snakeBodyPartPositionDeltas.append([SnakePartHistory]())
+        
+    }
+    
     override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
        /* Called when a touch begins */
+        
+        if (self.snakeBodyPartSprites.count == 0) {
+            addSnakeBodyPart()
+        }
         
         for touch in touches {
             let location = touch.locationInNode(self)
@@ -156,7 +178,7 @@ class GameScene: SKScene {
             }
         }
         
-        let forwardVelocity = maxTurnMagnitude - self.radialVelocity + 1.5
+        let forwardVelocity = maxTurnMagnitude - self.radialVelocity + 0.05
         
         self.directionInRadians = self.directionInRadians + (((M_PI / 180) * (self.radialVelocity / 2)) * M_PI)
 
@@ -166,14 +188,45 @@ class GameScene: SKScene {
         // snaps back to 0 when he's not rotating.
         self.snakeHead.zRotation = CGFloat(-1 * self.radialVelocity  * 0.1)
         
+        let newXComponent = sin(self.directionInRadians)
+        let newYComponent = cos( self.directionInRadians)
+        
+        let newXComponentZ = sin( self.directionInRadians)
+        let newYComponentZ = cos( self.directionInRadians)
+        
+        let snakePartHistory = SnakePartHistory()
+        snakePartHistory.velocity = CGPointMake(CGFloat(newXComponentZ * forwardVelocity), CGFloat(newYComponentZ * forwardVelocity ))
+        snakePartHistory.rotation = CGFloat(M_PI - self.directionInRadians )
+        
+        self.snakeBodyPartPositionDeltas[0].append(snakePartHistory)
+//        var snakePositionsText = "";
+//        for position in self.snakeBodyPartPositionDeltas[0] {
+//            let xPart = String( position.x)
+//            let yPart = String( position.y)
+//            
+//            snakePositionsText = snakePositionsText + "[" + xPart + ", " + yPart + "];";
+//        }
+//        debugPrint(snakePositionsText)
+
+        
         for debris in self.objectWrap.children {
-            let newXComponent = sin(self.directionInRadians)
-            let newYComponent = cos( self.directionInRadians)
+            
             
             debris.position = CGPointMake(debris.position.x - CGFloat(newXComponent * forwardVelocity), debris.position.y - CGFloat(newYComponent * forwardVelocity))
 //        debugPrint("x: " + String(newXComponent) + "; y: " + String(newYComponent))
         }
+        
+        var snakeIndex = 0;
+        for snakeBodyPart in self.snakeBodyPartSprites {
+            if (self.snakeBodyPartPositionDeltas[snakeIndex].count > 0) {
+                let nextHistory = self.snakeBodyPartPositionDeltas[snakeIndex].removeFirst()
+                snakeBodyPart.position = CGPointMake (snakeBodyPart.position.x + nextHistory.velocity.x, snakeBodyPart.position.y + nextHistory.velocity.y);
+                snakeBodyPart.zRotation = nextHistory.rotation
+            }
             
+            snakeIndex++
+        }
+        
         
         updateDebugWithStats()
 
@@ -184,5 +237,13 @@ class GameScene: SKScene {
         case None
         case Left
         case Right
+    }
+    
+    class SnakePartHistory {
+        init() {
+            velocity = CGPointMake(0,0)
+        }
+        var velocity: CGPoint
+        var rotation: CGFloat = 0.0
     }
 }
