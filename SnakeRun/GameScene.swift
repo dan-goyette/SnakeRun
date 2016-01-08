@@ -122,15 +122,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
         for _ in 0...20 {
             addFood()
         }
-        
-        
     }
     
+    
     func addFood() {
-        let food = SKShapeNode(circleOfRadius: CGFloat(5) )
-        food.fillColor = UIColor.redColor()
-        food.position = CGPointMake(CGFloat(arc4random_uniform(600)), CGFloat(arc4random_uniform(600)))
-        food.physicsBody = SKPhysicsBody(circleOfRadius: CGFloat(5))
+        let food = SKSpriteNode(color: UIColor.redColor(), size: CGSizeMake(10,10))
+        food.position = CGPointMake(CGFloat(arc4random_uniform(1000)), CGFloat(arc4random_uniform(1000)))
+        food.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(10,10))
         food.physicsBody?.usesPreciseCollisionDetection = false
         food.physicsBody?.categoryBitMask = foodCategory
         food.physicsBody?.contactTestBitMask = snakeHeadCategory
@@ -141,7 +139,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
     
     func addDebris() {
         let debris = SKSpriteNode(color: getRandomColor(), size: CGSizeMake(15,15))
-        debris.position = CGPointMake(CGFloat(arc4random_uniform(300)), CGFloat(arc4random_uniform(300)))
+        debris.position = CGPointMake(CGFloat(arc4random_uniform(1000)), CGFloat(arc4random_uniform(1000)))
         debris.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(15,15))
         debris.physicsBody?.usesPreciseCollisionDetection = false
         debris.physicsBody?.categoryBitMask = debrisCategory
@@ -157,7 +155,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
         let randomGreen:CGFloat = CGFloat(drand48())
         let randomBlue:CGFloat = CGFloat(drand48())
         
-        return UIColor(red: randomRed, green: randomGreen, blue: randomBlue, alpha: 1.0)
+        return UIColor(red: 0, green: randomGreen, blue: randomBlue, alpha: 1.0)
     }
   
     
@@ -227,7 +225,13 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
             }
             
             if (self.addSnakePartButton.containsPoint(location)) {
-                addSnakeBodyPart()
+                for _ in 0...20 {
+                    addDebris()
+                }
+                
+                for _ in 0...20 {
+                    addFood()
+                }
             }
         }
         
@@ -337,16 +341,16 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
     
      func didBeginContact(contact: SKPhysicsContact) {
         
-        if (contact.bodyA.categoryBitMask == snakeHeadCategory && contact.bodyB.categoryBitMask == foodCategory
-            || contact.bodyA.categoryBitMask == foodCategory && contact.bodyB.categoryBitMask == snakeHeadCategory ) {
-            if contact.bodyA.node is SKShapeNode {
-                self.gameWorld.removeChildrenInArray([contact.bodyA.node!])
-            } else if contact.bodyB.node is SKShapeNode {
-                self.gameWorld.removeChildrenInArray([contact.bodyB.node!])
-            }
-                
+      
+        if (contact.bodyA.categoryBitMask == snakeHeadCategory && contact.bodyB.categoryBitMask == foodCategory) {
+            self.gameWorld.removeChildrenInArray([contact.bodyB.node!])
+            addSnakeBodyPart()
+        } else if (contact.bodyA.categoryBitMask == foodCategory && contact.bodyB.categoryBitMask == snakeHeadCategory) {
+            self.gameWorld.removeChildrenInArray([contact.bodyA.node!])
             addSnakeBodyPart()
         }
+
+        
         
         if (contact.bodyA.categoryBitMask == snakeHeadCategory && contact.bodyB.categoryBitMask == debrisCategory) {
             self.gameWorld.removeChildrenInArray([contact.bodyB.node!])
