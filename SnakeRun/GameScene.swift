@@ -8,7 +8,7 @@
 
 import SpriteKit
 
-class GameScene: SKScene {
+class GameScene: SKScene, SKPhysicsContactDelegate{
     
     var leftTurnButton: SKShapeNode!
     var rightTurnButton: SKShapeNode!
@@ -37,7 +37,7 @@ class GameScene: SKScene {
     let maxTurnMagnitude = 2.0;
     let turnIncremement = 0.1
     let unturnIncremement = 0.2
-    let forwardVelocityTurnSpeedMultiplier = 0.75
+    let forwardVelocityTurnSpeedMultiplier = 0.5
     let baseForwardVelocity = 4.0
     
     let historyEntryQueueSize = 4
@@ -45,10 +45,13 @@ class GameScene: SKScene {
     
     let snakeHeadCategory: UInt32 = 0x1 << 0
     let debrisCategory: UInt32 = 0x1 << 1
+    let foodCategory: UInt32 = 0x1 << 2
+
     
     override func didMoveToView(view: SKView) {
         
         self.physicsWorld.gravity = CGVectorMake(0, 0);
+        self.physicsWorld.contactDelegate = self
         
         let screenSize: CGRect = UIScreen.mainScreen().bounds
         
@@ -88,6 +91,7 @@ class GameScene: SKScene {
         self.snakeHead.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(15,15))
         self.snakeHead.physicsBody?.usesPreciseCollisionDetection = true
         self.snakeHead.physicsBody?.categoryBitMask = snakeHeadCategory
+        self.snakeHead.physicsBody?.dynamic = false
         self.gameWorld.addChild(snakeHead)
         
         let snakeNose = SKSpriteNode(color: UIColor.blackColor(), size: CGSizeMake(2,5))
@@ -111,19 +115,38 @@ class GameScene: SKScene {
         // These are the History entries for the head.
         self.snakeBodyPartHistories.append([SnakePartHistory]())
         
-        for _ in 0...40 {
+        for _ in 0...10 {
             addDebris()
         }
         
+        for _ in 0...40 {
+            addFood()
+        }
         
+        
+    }
+    
+    func addFood() {
+        let food = SKShapeNode(circleOfRadius: CGFloat(5) )
+        food.fillColor = UIColor.redColor()
+        food.position = CGPointMake(CGFloat(arc4random_uniform(600)), CGFloat(arc4random_uniform(600)))
+        food.physicsBody = SKPhysicsBody(circleOfRadius: CGFloat(5))
+        food.physicsBody?.usesPreciseCollisionDetection = false
+        food.physicsBody?.categoryBitMask = foodCategory
+        food.physicsBody?.contactTestBitMask = snakeHeadCategory
+        food.physicsBody?.collisionBitMask = snakeHeadCategory
+        food.physicsBody?.dynamic = true
+        self.gameWorld.addChild(food)
     }
     
     func addDebris() {
         let debris = SKSpriteNode(color: getRandomColor(), size: CGSizeMake(15,15))
         debris.position = CGPointMake(CGFloat(arc4random_uniform(300)), CGFloat(arc4random_uniform(300)))
         debris.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(15,15))
-        debris.physicsBody?.usesPreciseCollisionDetection = true
+        debris.physicsBody?.usesPreciseCollisionDetection = false
         debris.physicsBody?.categoryBitMask = debrisCategory
+        debris.physicsBody?.contactTestBitMask = snakeHeadCategory
+        debris.physicsBody?.collisionBitMask = snakeHeadCategory
         self.gameWorld.addChild(debris)
         self.debrisSprites.append(debris)
 
@@ -152,7 +175,7 @@ class GameScene: SKScene {
         snakeBodyPart.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(15,15))
         snakeBodyPart.physicsBody?.usesPreciseCollisionDetection = true
         snakeBodyPart.physicsBody?.categoryBitMask = snakeHeadCategory
-
+        snakeBodyPart.physicsBody?.dynamic = false
         
         let lastHistories = self.snakeBodyPartHistories.last!
         let firstEntry = lastHistories.first!
@@ -172,6 +195,20 @@ class GameScene: SKScene {
             initialHistories.append(initialHistory)
         }
         self.snakeBodyPartHistories.append(initialHistories)
+    }
+    
+    func damageSnake() {
+        // Remove half of the snakes parts
+        
+        if (self.snakeBodyPartSprites.count > 0) {
+            let numberToRemove = (self.snakeBodyPartSprites .count / 2) + 1
+            
+            for _ in 1...numberToRemove {
+                let spriteToRemove = self.snakeBodyPartSprites.removeLast()
+                self.gameWorld.removeChildrenInArray([spriteToRemove])
+                self.snakeBodyPartHistories.removeLast()
+            }
+        }
     }
     
     override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
@@ -291,7 +328,36 @@ class GameScene: SKScene {
             }
         }
         
+        
+        
         updateDebugWithStats()
+        
+    }
+    
+    
+     func didBeginContact(contact: SKPhysicsContact) {
+        
+        if (contact.bodyA.categoryBitMask == snakeHeadCategory && contact.bodyB.categoryBitMask == foodCategory
+            || contact.bodyA.categoryBitMask == foodCategory && contact.bodyB.categoryBitMask == snakeHeadCategory ) {
+            if contact.bodyA.node is SKShapeNode {
+                self.gameWorld.removeChildrenInArray([contact.bodyA.node!])
+            } else if contact.bodyB.node is SKShapeNode {
+                self.gameWorld.removeChildrenInArray([contact.bodyB.node!])
+            }
+                
+            addSnakeBodyPart()
+        }
+        
+        if (contact.bodyA.categoryBitMask == snakeHeadCategory && contact.bodyB.categoryBitMask == debrisCategory) {
+            self.gameWorld.removeChildrenInArray([contact.bodyB.node!])
+            self.debrisSprites.removeAtIndex(self.debrisSprites.indexOf(contact.bodyB.node as! SKSpriteNode)!)
+            damageSnake()
+        } else if (contact.bodyA.categoryBitMask == debrisCategory && contact.bodyB.categoryBitMask == snakeHeadCategory) {
+            self.gameWorld.removeChildrenInArray([contact.bodyA.node!])
+            self.debrisSprites.removeAtIndex(self.debrisSprites.indexOf(contact.bodyA.node as! SKSpriteNode)!)
+            damageSnake()
+        }
+        
         
     }
     
