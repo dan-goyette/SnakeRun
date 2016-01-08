@@ -20,8 +20,7 @@ class GameScene: SKScene {
     
     var gameWorld: SKSpriteNode!
     var rotationWrapper: SKSpriteNode!
-    var debris1: SKSpriteNode!
-    var debris2: SKSpriteNode!
+  
     
     var debrisSprites = [SKSpriteNode]()
     
@@ -35,31 +34,38 @@ class GameScene: SKScene {
     var debugLabel: SKLabelNode!
     var currentTurnButton = TurnDirection.None
     
-    var maxTurnMagnitude: Double! = 2.0;
-    var turnIncremement: Double! = 0.1
-    var unturnIncremement: Double! = 0.2
+    let maxTurnMagnitude = 2.0;
+    let turnIncremement = 0.1
+    let unturnIncremement = 0.2
+    let forwardVelocityTurnSpeedMultiplier = 0.75
+    let baseForwardVelocity = 4.0
     
-    var historyEntryQueueSize = 6
+    let historyEntryQueueSize = 4
+    
+    
+    let snakeHeadCategory: UInt32 = 0x1 << 0
+    let debrisCategory: UInt32 = 0x1 << 1
     
     override func didMoveToView(view: SKView) {
+        
+        self.physicsWorld.gravity = CGVectorMake(0, 0);
         
         let screenSize: CGRect = UIScreen.mainScreen().bounds
         
         /* Setup your scene here */
-        self.leftTurnButton = SKShapeNode(circleOfRadius: 30)
+        self.leftTurnButton = SKShapeNode(circleOfRadius: screenSize.height / 12)
         self.leftTurnButton.fillColor = UIColor.redColor()
         self.leftTurnButton.position = CGPointMake(-1 * screenSize.width/2 + 50, -1 * screenSize.height/2 + 100)
         self.leftTurnButton.zPosition = 2
         self.addChild(self.leftTurnButton)
         
-        self.rightTurnButton = SKShapeNode(circleOfRadius: 30)
+        self.rightTurnButton = SKShapeNode(circleOfRadius: screenSize.height / 12)
         self.rightTurnButton.fillColor = UIColor.redColor()
         self.rightTurnButton.position = CGPointMake( screenSize.width/2 - 50, -1 * screenSize.height/2 + 100)
         self.rightTurnButton.zPosition = 2
         self.addChild(self.rightTurnButton)
         
-        
-        self.addSnakePartButton = SKShapeNode(circleOfRadius: 30)
+        self.addSnakePartButton = SKShapeNode(circleOfRadius: screenSize.height / 12)
         self.addSnakePartButton.fillColor = UIColor.purpleColor()
         self.addSnakePartButton.position = CGPointMake(-1 * screenSize.width/2 + 50, -1 * screenSize.height/2 + 350)
         self.addSnakePartButton.zPosition = 2
@@ -79,6 +85,9 @@ class GameScene: SKScene {
         
         self.snakeHead = SKSpriteNode(color: UIColor.blackColor(), size: CGSizeMake(15,15))
         self.snakeHead.position = CGPointMake(0, 0)
+        self.snakeHead.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(15,15))
+        self.snakeHead.physicsBody?.usesPreciseCollisionDetection = true
+        self.snakeHead.physicsBody?.categoryBitMask = snakeHeadCategory
         self.gameWorld.addChild(snakeHead)
         
         let snakeNose = SKSpriteNode(color: UIColor.blackColor(), size: CGSizeMake(2,5))
@@ -96,25 +105,38 @@ class GameScene: SKScene {
         
         
         
-        
-        self.debris1 = SKSpriteNode(color: UIColor.greenColor(), size: CGSizeMake(15,15))
-        self.debris1.position = CGPointMake(100, 100)
-        self.gameWorld.addChild(debris1)
-        self.debrisSprites.append(self.debris1)
-        
-        self.debris2 = SKSpriteNode(color: UIColor.purpleColor(), size: CGSizeMake(15,15))
-        self.debris2.position = CGPointMake(-200, 125)
-        self.gameWorld.addChild(debris2)
-        self.debrisSprites.append(self.debris2)
-        
-        
         self.radialVelocity = 0
         self.directionInRadians = 0
         
         // These are the History entries for the head.
         self.snakeBodyPartHistories.append([SnakePartHistory]())
         
+        for _ in 0...40 {
+            addDebris()
+        }
+        
+        
     }
+    
+    func addDebris() {
+        let debris = SKSpriteNode(color: getRandomColor(), size: CGSizeMake(15,15))
+        debris.position = CGPointMake(CGFloat(arc4random_uniform(300)), CGFloat(arc4random_uniform(300)))
+        debris.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(15,15))
+        debris.physicsBody?.usesPreciseCollisionDetection = true
+        debris.physicsBody?.categoryBitMask = debrisCategory
+        self.gameWorld.addChild(debris)
+        self.debrisSprites.append(debris)
+
+    }
+    
+    func getRandomColor() -> UIColor{
+        let randomRed:CGFloat = CGFloat(drand48())
+        let randomGreen:CGFloat = CGFloat(drand48())
+        let randomBlue:CGFloat = CGFloat(drand48())
+        
+        return UIColor(red: randomRed, green: randomGreen, blue: randomBlue, alpha: 1.0)
+    }
+  
     
     func setDebugMessage(message: String) {
         self.debugLabel.text = message
@@ -127,7 +149,11 @@ class GameScene: SKScene {
     
     func addSnakeBodyPart() {
         let snakeBodyPart = SKSpriteNode(color: UIColor.blackColor(), size: CGSizeMake(15,15))
-       
+        snakeBodyPart.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(15,15))
+        snakeBodyPart.physicsBody?.usesPreciseCollisionDetection = true
+        snakeBodyPart.physicsBody?.categoryBitMask = snakeHeadCategory
+
+        
         let lastHistories = self.snakeBodyPartHistories.last!
         let firstEntry = lastHistories.first!
         
@@ -209,7 +235,13 @@ class GameScene: SKScene {
             }
         }
         
-        let forwardVelocity = 3.0// maxTurnMagnitude - self.radialVelocity
+        // The idea here is that while turning, he only goes a certain percentage of his
+        // base speed. The higher the forwardVelocityTurnSpeedMultiplier, the less reduction
+        let percentageOfMaxSpeed = (maxTurnMagnitude - abs( self.radialVelocity)) / maxTurnMagnitude
+        let forwardVelocityTurnSpeedMultiplier = 0.75
+        let forwardVelocity = baseForwardVelocity * (forwardVelocityTurnSpeedMultiplier + (percentageOfMaxSpeed * (1 - forwardVelocityTurnSpeedMultiplier)))
+        
+        
         
         self.directionInRadians = self.directionInRadians + (((M_PI / 180) * (self.radialVelocity / 2)) * M_PI)
         
@@ -217,7 +249,7 @@ class GameScene: SKScene {
         
         // This is faking the rotation by using rotation based on radial velocity, so the snake's head
         // snaps back to 0 when he's not rotating.
-        self.snakeHead.zRotation = CGFloat(0 - self.directionInRadians) + CGFloat(-1 * self.radialVelocity  * 0.1)
+        self.snakeHead.zRotation = CGFloat(0 - self.directionInRadians) + CGFloat(-1 * self.radialVelocity  * 0.4)
         
         let newXComponent = sin(self.directionInRadians)
         let newYComponent = cos( self.directionInRadians)
@@ -228,14 +260,15 @@ class GameScene: SKScene {
         self.gameWorld.position = CGPointMake( -1 * self.snakeHead.position.x, -1 * self.snakeHead.position.y)
         self.rotationWrapper.anchorPoint = self.snakeHead.position
         
-        
+        // We don't use the snakeHead's actual zRotation here because we don't want the body
+        // parts wobbling due to the overturning of the head.
         let historyEntry = SnakePartHistory()
-        historyEntry.position = self.snakeHead.position
-        historyEntry.rotation = self.snakeHead.zRotation
+        historyEntry.position = CGPointMake( self.snakeHead.position.x, self.snakeHead.position.y)
+        historyEntry.rotation = CGFloat(0 - self.directionInRadians) + CGFloat(-1 * self.radialVelocity  * 0.15)
         self.snakeBodyPartHistories[0].insert(historyEntry, atIndex: 0)
         
         if (self.snakeBodyPartHistories[0].count > self.historyEntryQueueSize) {
-            let poppedHistoryEntry = self.snakeBodyPartHistories[0].removeLast()
+            self.snakeBodyPartHistories[0].removeLast()
             if (self.snakeBodyPartHistories.count > 1) {
                 let newEntry = SnakePartHistory()
                 newEntry.position = historyEntry.position
