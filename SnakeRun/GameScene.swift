@@ -115,11 +115,11 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
         // These are the History entries for the head.
         self.snakeBodyPartHistories.append([SnakePartHistory]())
         
-        for _ in 0...10 {
+        for _ in 0...20 {
             addDebris()
         }
         
-        for _ in 0...40 {
+        for _ in 0...20 {
             addFood()
         }
         
