@@ -121,8 +121,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
         // These are the History entries for the head.
         self.snakeBodyPartHistories.append([SnakePartHistory]())
         
-        for _ in 0...20 {
-            //addDebris()
+        for _ in 0...10 {
+            addDebris()
         }
         
         for _ in 0...20 {
@@ -153,6 +153,21 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
         debris.physicsBody?.collisionBitMask = snakeHeadCategory
         self.gameWorld.addChild(debris)
         self.debrisSprites.append(debris)
+        
+        
+        
+        let wait = SKAction.waitForDuration(1)
+        let run = SKAction.runBlock {
+            let random = drand48() * 2.0
+            let xVal = CGFloat(cos(random)) * self.snakePartWidth * 10
+            let yVal = CGFloat(sin(random)) * self.snakePartWidth * 10
+            let move = SKAction.moveBy(CGVectorMake(xVal, yVal), duration: 1)
+            debris.runAction(move)
+        }
+        let spinFast = SKAction.rotateByAngle(30, duration: 1)
+        let spinSlow = SKAction.rotateByAngle(4, duration: 1)
+        
+        debris.runAction(SKAction.repeatActionForever(SKAction.sequence([ run, spinFast, spinSlow])))
 
     }
     
@@ -231,7 +246,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
             }
             
             if (self.addSnakePartButton.containsPoint(location)) {
-                for _ in 0...20 {
+                for _ in 0...10 {
                     //addDebris()
                 }
                 
