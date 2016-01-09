@@ -10,6 +10,9 @@ import SpriteKit
 
 class GameScene: SKScene, SKPhysicsContactDelegate{
     
+    var snakePartWidth: CGFloat!
+    var baseForwardVelocity: CGFloat!
+    
     var leftTurnButton: SKShapeNode!
     var rightTurnButton: SKShapeNode!
     
@@ -34,13 +37,12 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
     var debugLabel: SKLabelNode!
     var currentTurnButton = TurnDirection.None
     
-    let maxTurnMagnitude = 2.0;
+    let maxTurnMagnitude = 3.0;
     let turnIncremement = 0.1
     let unturnIncremement = 0.2
-    let forwardVelocityTurnSpeedMultiplier = 0.5
-    let baseForwardVelocity = 4.0
+    let forwardVelocityTurnSpeedMultiplier = 0.75
     
-    let historyEntryQueueSize = 4
+    var historyEntryQueueSize: Int!
     
     
     let snakeHeadCategory: UInt32 = 0x1 << 0
@@ -56,21 +58,21 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
         let screenSize: CGRect = UIScreen.mainScreen().bounds
         
         /* Setup your scene here */
-        self.leftTurnButton = SKShapeNode(circleOfRadius: screenSize.height / 12)
+        self.leftTurnButton = SKShapeNode(circleOfRadius: screenSize.height / 15)
         self.leftTurnButton.fillColor = UIColor.redColor()
-        self.leftTurnButton.position = CGPointMake(-1 * screenSize.width/2 + 50, -1 * screenSize.height/2 + 100)
+        self.leftTurnButton.position = CGPointMake( 0 - (screenSize.width / 2) + screenSize.width/15, 0 - (screenSize.height / 2) + screenSize.height/6)
         self.leftTurnButton.zPosition = 2
         self.addChild(self.leftTurnButton)
         
-        self.rightTurnButton = SKShapeNode(circleOfRadius: screenSize.height / 12)
+        self.rightTurnButton = SKShapeNode(circleOfRadius: screenSize.height / 15)
         self.rightTurnButton.fillColor = UIColor.redColor()
-        self.rightTurnButton.position = CGPointMake( screenSize.width/2 - 50, -1 * screenSize.height/2 + 100)
+        self.rightTurnButton.position = CGPointMake( (screenSize.width / 2) - screenSize.width/15, 0 - (screenSize.height / 2) + screenSize.height/6)
         self.rightTurnButton.zPosition = 2
         self.addChild(self.rightTurnButton)
         
-        self.addSnakePartButton = SKShapeNode(circleOfRadius: screenSize.height / 12)
+        self.addSnakePartButton = SKShapeNode(circleOfRadius: screenSize.height / 15)
         self.addSnakePartButton.fillColor = UIColor.purpleColor()
-        self.addSnakePartButton.position = CGPointMake(-1 * screenSize.width/2 + 50, -1 * screenSize.height/2 + 350)
+        self.addSnakePartButton.position = CGPointMake( 0 - (screenSize.width / 2) + screenSize.width/15, (screenSize.height / 2) - screenSize.height/6)
         self.addSnakePartButton.zPosition = 2
         self.addChild(self.addSnakePartButton)
         
@@ -86,23 +88,27 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
         
         
         
-        self.snakeHead = SKSpriteNode(color: UIColor.blackColor(), size: CGSizeMake(15,15))
+        self.snakePartWidth = sqrt(screenSize.width * screenSize.width + screenSize.height * screenSize.height) / 60.0
+        self.baseForwardVelocity = self.snakePartWidth / 3.5
+        self.historyEntryQueueSize = 4
+        
+        self.snakeHead = SKSpriteNode(color: UIColor.blackColor(), size: CGSizeMake(snakePartWidth,snakePartWidth))
         self.snakeHead.position = CGPointMake(0, 0)
-        self.snakeHead.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(15,15))
+        self.snakeHead.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(snakePartWidth,snakePartWidth))
         self.snakeHead.physicsBody?.usesPreciseCollisionDetection = true
         self.snakeHead.physicsBody?.categoryBitMask = snakeHeadCategory
         self.snakeHead.physicsBody?.dynamic = false
         self.gameWorld.addChild(snakeHead)
         
-        let snakeNose = SKSpriteNode(color: UIColor.blackColor(), size: CGSizeMake(2,5))
-        snakeNose.position = CGPointMake(-1,6)
+        let snakeNose = SKSpriteNode(color: UIColor.blackColor(), size: CGSizeMake(snakePartWidth / 6.0, snakePartWidth / 3.0))
+        snakeNose.position = CGPointMake(0 - snakePartWidth / 12.0, snakePartWidth/2.0)
         snakeNose.anchorPoint = CGPointMake(0,0)
         self.snakeHead.addChild(snakeNose)
         
         
         self.debugLabel = SKLabelNode()
         self.debugLabel.horizontalAlignmentMode = .Left
-        self.debugLabel.position = CGPointMake(-1 * screenSize.width/2, screenSize.height/2 - 25)
+        self.debugLabel.position = CGPointMake(-1 * screenSize.width/2, screenSize.height/2)
         self.debugLabel.fontSize = 12
         self.debugLabel.fontColor = UIColor.blackColor()
         self.addChild(self.debugLabel)
@@ -116,7 +122,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
         self.snakeBodyPartHistories.append([SnakePartHistory]())
         
         for _ in 0...20 {
-            addDebris()
+            //addDebris()
         }
         
         for _ in 0...20 {
@@ -126,9 +132,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
     
     
     func addFood() {
-        let food = SKSpriteNode(color: UIColor.redColor(), size: CGSizeMake(10,10))
+        let food = SKSpriteNode(color: getRandomColor(), size: CGSizeMake(snakePartWidth * 0.6 , snakePartWidth * 0.6))
         food.position = CGPointMake(CGFloat(arc4random_uniform(1000)), CGFloat(arc4random_uniform(1000)))
-        food.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(10,10))
+        food.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(snakePartWidth * 0.6 , snakePartWidth * 0.6))
         food.physicsBody?.usesPreciseCollisionDetection = false
         food.physicsBody?.categoryBitMask = foodCategory
         food.physicsBody?.contactTestBitMask = snakeHeadCategory
@@ -138,9 +144,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
     }
     
     func addDebris() {
-        let debris = SKSpriteNode(color: getRandomColor(), size: CGSizeMake(15,15))
+        let debris = SKSpriteNode(color: UIColor.redColor(), size: CGSizeMake(snakePartWidth,snakePartWidth))
         debris.position = CGPointMake(CGFloat(arc4random_uniform(1000)), CGFloat(arc4random_uniform(1000)))
-        debris.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(15,15))
+        debris.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(snakePartWidth,snakePartWidth))
         debris.physicsBody?.usesPreciseCollisionDetection = false
         debris.physicsBody?.categoryBitMask = debrisCategory
         debris.physicsBody?.contactTestBitMask = snakeHeadCategory
@@ -151,7 +157,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
     }
     
     func getRandomColor() -> UIColor{
-        let randomRed:CGFloat = CGFloat(drand48())
+        //rlet randomRed:CGFloat = CGFloat(drand48())
         let randomGreen:CGFloat = CGFloat(drand48())
         let randomBlue:CGFloat = CGFloat(drand48())
         
@@ -169,8 +175,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
     }
     
     func addSnakeBodyPart() {
-        let snakeBodyPart = SKSpriteNode(color: UIColor.blackColor(), size: CGSizeMake(15,15))
-        snakeBodyPart.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(15,15))
+        let snakeBodyPart = SKSpriteNode(color: UIColor.blackColor(), size: CGSizeMake(snakePartWidth,snakePartWidth))
+        snakeBodyPart.physicsBody = SKPhysicsBody(rectangleOfSize: CGSizeMake(snakePartWidth,snakePartWidth))
         snakeBodyPart.physicsBody?.usesPreciseCollisionDetection = true
         snakeBodyPart.physicsBody?.categoryBitMask = snakeHeadCategory
         snakeBodyPart.physicsBody?.dynamic = false
@@ -226,7 +232,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
             
             if (self.addSnakePartButton.containsPoint(location)) {
                 for _ in 0...20 {
-                    addDebris()
+                    //addDebris()
                 }
                 
                 for _ in 0...20 {
@@ -279,8 +285,8 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
         // The idea here is that while turning, he only goes a certain percentage of his
         // base speed. The higher the forwardVelocityTurnSpeedMultiplier, the less reduction
         let percentageOfMaxSpeed = (maxTurnMagnitude - abs( self.radialVelocity)) / maxTurnMagnitude
-        let forwardVelocityTurnSpeedMultiplier = 0.75
-        let forwardVelocity = baseForwardVelocity * (forwardVelocityTurnSpeedMultiplier + (percentageOfMaxSpeed * (1 - forwardVelocityTurnSpeedMultiplier)))
+
+        let forwardVelocity = Double(baseForwardVelocity) * (forwardVelocityTurnSpeedMultiplier + (percentageOfMaxSpeed * (1 - forwardVelocityTurnSpeedMultiplier)))
         
         
         
@@ -334,7 +340,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
         
         
         
-        updateDebugWithStats()
+        //updateDebugWithStats()
         
     }
     
