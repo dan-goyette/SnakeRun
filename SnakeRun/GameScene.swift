@@ -158,7 +158,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
         
         let wait = SKAction.waitForDuration(1)
         let run = SKAction.runBlock {
-            let random = drand48() * 2.0
+            let random = drand48() * 2.0 * M_PI
             let xVal = CGFloat(cos(random)) * self.snakePartWidth * 10
             let yVal = CGFloat(sin(random)) * self.snakePartWidth * 10
             let move = SKAction.moveBy(CGVectorMake(xVal, yVal), duration: 1)
@@ -166,8 +166,10 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
         }
         let spinFast = SKAction.rotateByAngle(30, duration: 1)
         let spinSlow = SKAction.rotateByAngle(4, duration: 1)
+        let grow = SKAction.scaleBy(1.5, duration: 1)
+        let shrink = SKAction.scaleBy(2.0/3.0, duration: 1)
         
-        debris.runAction(SKAction.repeatActionForever(SKAction.sequence([ run, spinFast, spinSlow])))
+        debris.runAction(SKAction.repeatActionForever(SKAction.sequence([ run, grow, spinFast, shrink, spinSlow ])))
 
     }
     
@@ -247,7 +249,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
             
             if (self.addSnakePartButton.containsPoint(location)) {
                 for _ in 0...10 {
-                    //addDebris()
+                    addDebris()
                 }
                 
                 for _ in 0...20 {
@@ -365,21 +367,33 @@ class GameScene: SKScene, SKPhysicsContactDelegate{
       
         if (contact.bodyA.categoryBitMask == snakeHeadCategory && contact.bodyB.categoryBitMask == foodCategory) {
             self.gameWorld.removeChildrenInArray([contact.bodyB.node!])
-            addSnakeBodyPart()
+            for _ in 0...Int(sqrt(Double(self.snakeBodyPartHistories.count))) {
+                addSnakeBodyPart()
+            }
+            
         } else if (contact.bodyA.categoryBitMask == foodCategory && contact.bodyB.categoryBitMask == snakeHeadCategory) {
             self.gameWorld.removeChildrenInArray([contact.bodyA.node!])
-            addSnakeBodyPart()
+            for _ in 0...Int(sqrt(Double(self.snakeBodyPartHistories.count))) {
+                addSnakeBodyPart()
+            }
         }
 
         
         
         if (contact.bodyA.categoryBitMask == snakeHeadCategory && contact.bodyB.categoryBitMask == debrisCategory) {
             self.gameWorld.removeChildrenInArray([contact.bodyB.node!])
-            self.debrisSprites.removeAtIndex(self.debrisSprites.indexOf(contact.bodyB.node as! SKSpriteNode)!)
+            let indexOfDebris = self.debrisSprites.indexOf(contact.bodyB.node as! SKSpriteNode)
+            if (indexOfDebris != nil) {
+                self.debrisSprites.removeAtIndex(indexOfDebris!)
+            }
             damageSnake()
         } else if (contact.bodyA.categoryBitMask == debrisCategory && contact.bodyB.categoryBitMask == snakeHeadCategory) {
             self.gameWorld.removeChildrenInArray([contact.bodyA.node!])
-            self.debrisSprites.removeAtIndex(self.debrisSprites.indexOf(contact.bodyA.node as! SKSpriteNode)!)
+            let indexOfDebris = self.debrisSprites.indexOf(contact.bodyA.node as! SKSpriteNode)
+            if (indexOfDebris != nil) {
+                self.debrisSprites.removeAtIndex(indexOfDebris!)
+            }
+
             damageSnake()
         }
         
